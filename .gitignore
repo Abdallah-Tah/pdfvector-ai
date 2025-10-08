@@ -1,3 +1,4 @@
+
 # Python
 __pycache__/
 *.py[cod]
@@ -7,6 +8,10 @@ __pycache__/
 env/
 venv/
 ENV/
+
+# Byte-compiled / optimized / DLL files
+# C extensions
+# Distribution / packaging
 build/
 develop-eggs/
 dist/
@@ -28,8 +33,26 @@ wheels/
 .coverage
 htmlcov/
 *.cover
+.tox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+.hypothesis/
 
-# IDE
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+
+# Virtual environments
+.venv
+
+# Environment variables
+.env
+
+# IDEs
 .vscode/
 .idea/
 *.swp

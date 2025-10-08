@@ -1,102 +1,123 @@
 """
-FastAPI service for vector-safe SVG to PDF conversion.
+FastAPI service for converting SVG to vector PDF
 """
-from fastapi import FastAPI, HTTPException, UploadFile, File
+import os
+from io import BytesIO
+from typing import Optional
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
+from fastapi import FastAPI, HTTPException, Security, UploadFile, File, Header
 from fastapi.responses import Response
-import cairosvg
-from xml.etree.ElementTree import ParseError
-from urllib.error import URLError
-import io
+from pydantic import BaseModel, Field
+import os
+from io import BytesIO
+from typing import Optional
+
+# import cairosvg
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
+from fastapi import FastAPI, HTTPException, Security, UploadFile, File, Header
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
+
 
 app = FastAPI(
-    title="PDFVector AI",
+    title="pdfvector-ai",
     description="Vector-safe PDF conversion API (SVG → PDF)",
     version="1.0.0"
 )
 
 
-@app.get("/")
-async def root():
-    """Health check endpoint."""
-    return {
-        "message": "PDFVector AI - SVG to PDF Conversion API",
-        "status": "online",
-        "version": "1.0.0"
-    }
+API_KEY = os.getenv("API_KEY", "")
 
 
-@app.post("/convert", response_class=Response)
-async def convert_svg_to_pdf(file: UploadFile = File(...)):
+def svg_to_pdf(svg_content: bytes) -> bytes:
     """
-    Convert SVG file to PDF format.
-    
+    Convert SVG content to PDF using svglib and reportlab
     Args:
-        file: SVG file to convert (multipart/form-data)
-        
+        svg_content: SVG content as bytes
     Returns:
-        PDF file as bytes with application/pdf content type
-        
-    Raises:
-        HTTPException: If file is not valid SVG or conversion fails
+        PDF content as bytes
     """
-    # Validate file type
-    if not file.content_type or "svg" not in file.content_type.lower():
-        # Also check filename extension
-        if not file.filename or not file.filename.lower().endswith(".svg"):
-            raise HTTPException(
-                status_code=400,
-                detail="Invalid file type. Please upload an SVG file."
-            )
-    
     try:
-        # Read SVG content
-        svg_content = await file.read()
-        
-        # Validate that it's valid SVG content
-        if not svg_content:
-            raise HTTPException(
-                status_code=400,
-                detail="Empty file provided"
-            )
-        
-        # Convert SVG to PDF using CairoSVG
-        # CairoSVG preserves vector graphics, ensuring quality
-        pdf_bytes = cairosvg.svg2pdf(bytestring=svg_content)
-        
-        # Return PDF with appropriate headers
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f"attachment; filename={file.filename.rsplit('.', 1)[0]}.pdf"
-            }
-        )
-        
-    except ParseError as e:
-        # Handle SVG parsing errors
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid SVG file: {str(e)}"
-        )
-    except URLError as e:
-        # Handle empty or invalid file errors
-        raise HTTPException(
-            status_code=400,
-            detail="Invalid or empty SVG file"
-        )
-    except HTTPException:
-        # Re-raise HTTPExceptions as-is
-        raise
+        svg_io = BytesIO(svg_content)
+        rlg_drawing = svg2rlg(svg_io)
+        pdf_buffer = BytesIO()
+        renderPDF.drawToFile(rlg_drawing, pdf_buffer)
+        pdf_buffer.seek(0)
+        return pdf_buffer.getvalue()
     except Exception as e:
-        # Handle other conversion errors
-        error_message = str(e)
+        raise Exception(f"SVG to PDF conversion failed: {str(e)}")
+
+
+class SVGConvertRequest(BaseModel):
+    """Request model for SVG conversion"""
+    svg: str = Field(..., description="SVG content as string")
+    filename: Optional[str] = Field(
+        None, description="Optional output filename")
+
+
+async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")):
+    """Verify the API key from the request header"""
+    if not API_KEY:
         raise HTTPException(
-            status_code=500,
-            detail=f"Conversion failed: {error_message}"
-        )
+            status_code=500, detail="API_KEY not configured on server")
+    if x_api_key != API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+    return x_api_key
 
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for monitoring."""
-    return {"status": "healthy"}
+    """Health check endpoint"""
+    return {"status": "healthy", "service": "pdfvector-ai"}
+
+
+@app.post("/v1/convert/svg")
+async def convert_svg_json(request: SVGConvertRequest, api_key: str = Security(verify_api_key)):
+    """
+    Convert SVG to PDF from JSON payload
+    Args:
+        request: SVGConvertRequest with svg content and optional filename
+        api_key: API key from X-API-Key header
+    Returns:
+        PDF file as response with appropriate Content-Disposition header
+    """
+    try:
+        pdf_data = svg_to_pdf(request.svg.encode('utf-8'))
+        filename = request.filename if request.filename else "output.pdf"
+        if not filename.endswith('.pdf'):
+            filename += '.pdf'
+        return Response(content=pdf_data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"Error converting SVG to PDF: {str(e)}")
+
+
+@app.post("/v1/convert/svg/file")
+async def convert_svg_file(file: UploadFile = File(...), api_key: str = Security(verify_api_key)):
+    """
+    Convert SVG to PDF from uploaded file
+    Args:
+        file: Uploaded SVG file
+        api_key: API key from X-API-Key header
+    Returns:
+        PDF file as response with appropriate Content-Disposition header
+    """
+    try:
+        svg_content = await file.read()
+        pdf_data = svg_to_pdf(svg_content)
+        original_filename = file.filename or "output"
+        if original_filename.endswith('.svg'):
+            pdf_filename = original_filename[:-4] + '.pdf'
+        else:
+            pdf_filename = original_filename + '.pdf'
+        return Response(content=pdf_data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{pdf_filename}"'})
+    except Exception as e:
+        raise HTTPException(
+            status_code=400, detail=f"Error converting SVG to PDF: {str(e)}")
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
