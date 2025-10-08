@@ -4,6 +4,14 @@ FastAPI service for converting SVG to vector PDF
 import os
 from io import BytesIO
 from typing import Optional
+from svglib.svglib import svg2rlg
+from reportlab.graphics import renderPDF
+from fastapi import FastAPI, HTTPException, Security, UploadFile, File, Header
+from fastapi.responses import Response
+from pydantic import BaseModel, Field
+import os
+from io import BytesIO
+from typing import Optional
 
 # import cairosvg
 from svglib.svglib import svg2rlg
@@ -12,43 +20,32 @@ from fastapi import FastAPI, HTTPException, Security, UploadFile, File, Header
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
+
 app = FastAPI(
     title="pdfvector-ai",
     description="Vector-safe PDF conversion API (SVG → PDF)",
     version="1.0.0"
 )
 
-# Get API key from environment variable
+
 API_KEY = os.getenv("API_KEY", "")
 
 
 def svg_to_pdf(svg_content: bytes) -> bytes:
     """
     Convert SVG content to PDF using svglib and reportlab
-
     Args:
         svg_content: SVG content as bytes
-
     Returns:
         PDF content as bytes
     """
     try:
-        # Create a BytesIO object from SVG content
         svg_io = BytesIO(svg_content)
-
-        # Parse SVG and convert to ReportLab drawing
         rlg_drawing = svg2rlg(svg_io)
-
-        # Create PDF output buffer
         pdf_buffer = BytesIO()
-
-        # Render drawing to PDF
         renderPDF.drawToFile(rlg_drawing, pdf_buffer)
-
-        # Get PDF bytes
         pdf_buffer.seek(0)
         return pdf_buffer.getvalue()
-
     except Exception as e:
         raise Exception(f"SVG to PDF conversion failed: {str(e)}")
 
@@ -64,107 +61,61 @@ async def verify_api_key(x_api_key: str = Header(..., alias="X-API-Key")):
     """Verify the API key from the request header"""
     if not API_KEY:
         raise HTTPException(
-            status_code=500,
-            detail="API_KEY not configured on server"
-        )
+            status_code=500, detail="API_KEY not configured on server")
     if x_api_key != API_KEY:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid API key"
-        )
+        raise HTTPException(status_code=401, detail="Invalid API key")
     return x_api_key
 
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {
-        "status": "healthy",
-        "service": "pdfvector-ai"
-    }
+    return {"status": "healthy", "service": "pdfvector-ai"}
 
 
 @app.post("/v1/convert/svg")
-async def convert_svg_json(
-    request: SVGConvertRequest,
-    api_key: str = Security(verify_api_key)
-):
+async def convert_svg_json(request: SVGConvertRequest, api_key: str = Security(verify_api_key)):
     """
     Convert SVG to PDF from JSON payload
-
     Args:
         request: SVGConvertRequest with svg content and optional filename
         api_key: API key from X-API-Key header
-
     Returns:
         PDF file as response with appropriate Content-Disposition header
     """
     try:
-        # Convert SVG to PDF
         pdf_data = svg_to_pdf(request.svg.encode('utf-8'))
-
-        # Determine filename
         filename = request.filename if request.filename else "output.pdf"
         if not filename.endswith('.pdf'):
             filename += '.pdf'
-
-        # Return PDF with Content-Disposition header
-        return Response(
-            content=pdf_data,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f'attachment; filename="{filename}"'
-            }
-        )
+        return Response(content=pdf_data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{filename}"'})
     except Exception as e:
         raise HTTPException(
-            status_code=400,
-            detail=f"Error converting SVG to PDF: {str(e)}"
-        )
+            status_code=400, detail=f"Error converting SVG to PDF: {str(e)}")
 
 
 @app.post("/v1/convert/svg/file")
-async def convert_svg_file(
-    file: UploadFile = File(...),
-    api_key: str = Security(verify_api_key)
-):
+async def convert_svg_file(file: UploadFile = File(...), api_key: str = Security(verify_api_key)):
     """
     Convert SVG to PDF from uploaded file
-
     Args:
         file: Uploaded SVG file
         api_key: API key from X-API-Key header
-
     Returns:
         PDF file as response with appropriate Content-Disposition header
     """
     try:
-        # Read the uploaded file
         svg_content = await file.read()
-
-        # Convert SVG to PDF
         pdf_data = svg_to_pdf(svg_content)
-
-        # Determine filename from uploaded file
         original_filename = file.filename or "output"
         if original_filename.endswith('.svg'):
             pdf_filename = original_filename[:-4] + '.pdf'
         else:
             pdf_filename = original_filename + '.pdf'
-
-        # Return PDF with Content-Disposition header
-        return Response(
-            content=pdf_data,
-            media_type="application/pdf",
-            headers={
-                "Content-Disposition": f'attachment; filename="{pdf_filename}"'
-            }
-        )
+        return Response(content=pdf_data, media_type="application/pdf", headers={"Content-Disposition": f'attachment; filename="{pdf_filename}"'})
     except Exception as e:
         raise HTTPException(
-            status_code=400,
-            detail=f"Error converting SVG to PDF: {str(e)}"
-        )
+            status_code=400, detail=f"Error converting SVG to PDF: {str(e)}")
 
 
 if __name__ == "__main__":

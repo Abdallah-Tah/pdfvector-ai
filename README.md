@@ -4,6 +4,8 @@ Vector-safe PDF conversion API (SVG → PDF) built with FastAPI.
 
 ## Features
 
+## Features
+
 - Convert SVG to vector PDF with preserved quality
 - Two conversion endpoints: JSON payload and file upload
 - API key authentication for secure access
@@ -14,7 +16,7 @@ Vector-safe PDF conversion API (SVG → PDF) built with FastAPI.
 ## Requirements
 
 - Python 3.11+
-- Cairo graphics library (for SVG rendering)
+- svglib, reportlab (pure Python, no system dependencies required)
 
 ## Installation
 
@@ -26,30 +28,25 @@ git clone https://github.com/Abdallah-Tah/pdfvector-ai.git
 cd pdfvector-ai
 ```
 
-2. Install system dependencies (Ubuntu/Debian):
-```bash
-sudo apt-get update
-sudo apt-get install -y libcairo2 libpango-1.0-0 libpangocairo-1.0-0 libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info
-```
-
-3. Create and activate virtual environment:
+2. Create and activate virtual environment:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+venv\Scripts\activate  # On Windows
+# Or: source venv/bin/activate  # On Linux/Mac
 ```
 
-4. Install Python dependencies:
+3. Install Python dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-5. Set up environment variables:
+4. Set up environment variables:
 ```bash
 cp .env.example .env
 # Edit .env and set your API_KEY
 ```
 
-6. Run the application:
+5. Run the application:
 ```bash
 uvicorn main:app --reload
 ```
@@ -104,10 +101,21 @@ Convert SVG content from JSON payload to PDF.
   "svg": "<svg>...</svg>",
   "filename": "output.pdf"  // optional
 }
+>>>>>>> main
 ```
 
 **Example:**
 ```bash
+<<<<<<< HEAD
+curl -F "file=@example.svg" http://localhost:8000/convert -o output.pdf
+```
+
+### API Documentation
+
+Interactive API documentation is automatically generated and available at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+=======
 curl -X POST http://localhost:8000/v1/convert/svg \
   -H "X-API-Key: your-secret-key" \
   -H "Content-Type: application/json" \
@@ -145,10 +153,40 @@ All conversion endpoints require authentication via the `X-API-Key` header. Set 
 ```bash
 API_KEY=your-secret-api-key-here
 ```
+>>>>>>> main
 
 ## Testing
 
 Run the test suite:
+<<<<<<< HEAD
+```bash
+pytest test_main.py -v
+```
+
+## Example SVG
+
+Create a test SVG file:
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">
+    <rect x="10" y="10" width="80" height="80" fill="red"/>
+    <circle cx="150" cy="50" r="40" fill="green"/>
+    <text x="50" y="120" font-size="20" fill="black">Vector Graphics</text>
+</svg>
+```
+
+Convert it to PDF:
+```bash
+curl -F "file=@test.svg" http://localhost:8000/convert -o output.pdf
+```
+
+## Technology Stack
+
+- **FastAPI**: Modern, fast web framework for building APIs
+- **CairoSVG**: SVG to PDF conversion library that preserves vector graphics
+- **Uvicorn**: ASGI server for running the application
+- **Pytest**: Testing framework
+=======
 
 ```bash
 pytest -v test_main.py
@@ -187,10 +225,13 @@ The included Dockerfile can be used to deploy on any container platform (AWS ECS
 
 - `API_KEY` (required): Secret key for API authentication
 - `PORT` (optional): Port to run the service on (default: 8000)
+>>>>>>> main
 
 ## License
 
 MIT
+<<<<<<< HEAD
+=======
 
 ## Contributing
 
@@ -201,3 +242,4 @@ Pull requests are welcome! Please ensure tests pass before submitting.
 Once the service is running, you can access:
 - Interactive API docs (Swagger UI): http://localhost:8000/docs
 - Alternative API docs (ReDoc): http://localhost:8000/redoc
+>>>>>>> main

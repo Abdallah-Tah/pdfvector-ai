@@ -1,13 +1,17 @@
-# Byte-compiled / optimized / DLL files
+
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
-
-# Distribution / packaging
 .Python
+env/
+venv/
+ENV/
+
+# Byte-compiled / optimized / DLL files
+# C extensions
+# Distribution / packaging
 build/
 develop-eggs/
 dist/
@@ -24,26 +28,25 @@ wheels/
 .installed.cfg
 *.egg
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.tox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+.hypothesis/
+
 # PyInstaller
 *.manifest
 *.spec
 
 # Unit test / coverage reports
-htmlcov/
-.tox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
 
 # Virtual environments
-venv/
-ENV/
-env/
 .venv
 
 # Environment variables
@@ -59,3 +62,7 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# Temporary files
+*.tmp
+*.log
